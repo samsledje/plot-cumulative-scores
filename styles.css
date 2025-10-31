@@ -1,0 +1,265 @@
+:root {
+    --bg-dark: #0b1220;
+    --panel-dark: #071423;
+    --muted-dark: #9fb0c8;
+    --text-dark: #e6eef8;
+    --footer-border-color: rgba(255, 255, 255, 0.04);
+    --footer-hover-color: #cfe8ff;
+}
+
+/* Make the whole page dark by default */
+html,
+body {
+    height: 100%;
+    background: var(--bg-dark);
+    color: var(--text-dark);
+}
+
+body {
+    margin: 0;
+}
+
+/* Panels and common utility overrides for dark mode */
+.bg-white {
+    background-color: var(--panel-dark) !important;
+}
+
+.bg-blue-50 {
+    background-color: rgba(96, 165, 250, 0.06) !important;
+}
+
+.text-gray-500 {
+    color: var(--muted-dark) !important;
+}
+
+.text-gray-600 {
+    color: var(--muted-dark) !important;
+}
+
+.bg-gray-100 {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+.border-gray-300 {
+    border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Form control styling for dark mode */
+input[type="text"],
+input[type="file"],
+select,
+textarea {
+    background: var(--panel-dark) !important;
+    color: var(--text-dark) !important;
+    border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: rgba(230, 238, 248, 0.6) !important;
+}
+
+button {
+    color: inherit;
+}
+
+/* Light mode overrides when .light is present on html or body */
+html.light,
+body.light {
+    background: #ffffff;
+    color: #111827;
+}
+
+body.light .bg-white {
+    background-color: #ffffff !important;
+}
+
+body.light .bg-blue-50 {
+    background-color: #eef2ff !important;
+}
+
+body.light .text-gray-500 {
+    color: #6b7280 !important;
+}
+
+body.light .text-gray-600 {
+    color: #4b5563 !important;
+}
+
+body.light .bg-gray-100 {
+    background-color: #f3f4f6 !important;
+}
+
+body.light .border-gray-300 {
+    border-color: #d1d5db !important;
+}
+
+body.light input[type="text"],
+body.light select,
+body.light textarea {
+    background: #ffffff !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
+}
+
+/* Ensure dropzone border stands out in dark mode */
+.border-blue-300 {
+    border-color: rgba(96, 165, 250, 0.3) !important;
+}
+
+/* Smooth transitions for theme changes */
+html,
+body,
+.bg-white,
+.bg-blue-50,
+.bg-gray-100,
+input,
+select,
+textarea,
+button {
+    transition: background-color 260ms ease, color 260ms ease, border-color 260ms ease, box-shadow 220ms ease;
+}
+
+svg {
+    transition: stroke 220ms ease, fill 220ms ease;
+}
+
+/* Footer styles that work with dark and light mode */
+.footer-small {
+    width: 100%;
+    padding: 10px 0 20px 0;
+    /* larger bottom padding so icons sit further from screen bottom */
+    background: #0b1220;
+    text-align: center;
+    font-size: 13px;
+    color: #8a8fa3;
+    opacity: 0.7;
+    margin-top: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    /* tighter grouping so icons sit closer to the separator */
+}
+
+.footer-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    /* match tighter grouping for individual links */
+}
+
+.footer-icon {
+    width: 22px;
+    height: 22px;
+    vertical-align: middle;
+    color: #b0b8c1;
+    opacity: 0.7;
+    transition: color 0.2s, opacity 0.2s;
+}
+
+.footer-links a {
+    display: flex;
+    align-items: center;
+    color: #8a8fa3;
+    opacity: 0.7;
+    text-decoration: none;
+    transition: color 0.2s, opacity 0.2s;
+}
+
+.footer-links a:hover .footer-icon,
+.footer-links a:hover {
+    color: #fff;
+    opacity: 1;
+}
+
+.footer-sep {
+    color: #444a5a;
+    font-size: 16px;
+    margin: 0 4px;
+    /* reduce horizontal margin so icons sit closer to separator */
+    -webkit-user-select: none;
+    user-select: none;
+    opacity: 0.5;
+}
+
+/* Light mode overrides */
+body.light .footer-small {
+    /* light mode: make footer blend with page background and use muted text */
+    background-color: #ffffff !important;
+    color: #6b7280 !important;
+    opacity: 1 !important;
+    margin-top: 30px;
+}
+
+/* Stronger overrides in case other utility classes are more specific */
+body.light .footer-small,
+body.light .footer-small .footer-links,
+body.light .footer-small .footer-sep {
+    color: #6b7280 !important;
+    opacity: 1 !important;
+}
+
+body.light .footer-small .footer-icon,
+body.light .footer-links a {
+    color: #6b7280 !important;
+    opacity: 1 !important;
+}
+
+body.light .footer-links a:hover .footer-icon,
+body.light .footer-links a:hover {
+    color: #111827 !important;
+    opacity: 1 !important;
+}
+
+/* Floating theme toggle (FAB) */
+.theme-fab {
+    position: fixed;
+    right: 1rem;
+    /* 16px */
+    bottom: 1rem;
+    /* 16px */
+    width: 48px;
+    height: 48px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-dark);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 8px 20px rgba(2, 6, 23, 0.6);
+    z-index: 60;
+    /* above toast container */
+    transition: transform 160ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.theme-fab:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(2, 6, 23, 0.6);
+}
+
+.theme-fab svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 1.5;
+}
+
+/* Light mode appearance */
+body.light .theme-fab {
+    background: #ffffff;
+    color: #111827;
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    box-shadow: 0 8px 20px rgba(2, 6, 23, 0.06);
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+
+    .theme-fab,
+    .theme-fab:hover {
+        transition: none;
+        transform: none;
+    }
+}

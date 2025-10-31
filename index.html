@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Plot Cumulative Scores — Upload CSV</title>
+    <!-- Tailwind CDN for quick styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- External stylesheet with dark-mode defaults -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="min-h-screen flex items-start justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-5xl w-full space-y-8">
+            <header class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-semibold">Plot Cumulative Scores</h1>
+                </div>
+                <!-- header right side intentionally left blank; theme toggle moved to floating action button -->
+            </header>
+
+            <section class="bg-white shadow rounded-lg p-6">
+                <h2 id="uploaderLabel" class="sr-only">Upload CSV and chart options</h2>
+                <form aria-labelledby="uploaderLabel" class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">CSV File</label>
+                        <div id="dropzone"
+                            class="cursor-pointer flex items-center justify-center rounded-md border-2 border-dashed border-blue-300 bg-blue-50 py-8 px-4 hover:bg-blue-100 transition">
+                            <div class="text-center">
+                                <svg class="mx-auto h-8 w-8 text-blue-500" xmlns="http://www.w3.org/2000/svg"
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0l4-4m-4 4-4-4" />
+                                </svg>
+                                <p id="dropText" class="mt-2 text-sm text-blue-700">Drop CSV here, or <span
+                                        class="font-medium underline">browse</span></p>
+                                <p id="dropHint" class="mt-1 text-xs text-gray-500">One column per round, one row per
+                                    person</p>
+                            </div>
+                        </div>
+                        <label for="fileInput" class="sr-only">Choose CSV file to upload</label>
+                        <input id="fileInput" type="file" accept=".csv,text/csv" class="hidden" />
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="titleInput" class="block text-sm font-medium text-gray-700">Chart title</label>
+                        <input id="titleInput" type="text" placeholder="My Competition"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" />
+
+                        <div class="flex gap-2">
+                            <button id="plotBtn" type="button"
+                                class="mt-2 inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Plot</button>
+                            <button id="loadExampleBtn" type="button"
+                                class="mt-2 inline-flex items-center justify-center rounded-md bg-white border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">Load
+                                example</button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <section class="bg-white shadow rounded-lg p-4">
+                <div id="plot" class="w-full h-[640px]"></div>
+            </section>
+
+            <section class="text-sm text-gray-600">
+                <p class="mb-2">Example CSV:</p>
+                <pre class="bg-gray-100 p-3 rounded text-xs"> ,Round1,Round2,Round3
+Alice,10,6,5
+Bob,8,9,7
+Charlie,12,7,4</pre>
+            </section>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toastContainer" class="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 z-50">
+        <div id="toastInner" class="w-full flex flex-col items-center space-y-2 sm:items-end"></div>
+    </div>
+
+    <!-- Floating theme toggle (FAB) -->
+    <button id="themeToggle" aria-pressed="false" aria-label="Switch theme" class="theme-fab" title="Toggle theme">
+        <svg id="themeIcon" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <!-- default: moon (will be replaced by applyTheme on init) -->
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+        </svg>
+        <span id="themeLabel" class="sr-only">Dark mode</span>
+    </button>
+
+    <!-- Plotly (CDN) -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+
+    <!-- Our app (ES module) -->
+    <script type="module">
+        import { processCsvToFigure } from './pointsTracker.js';
+
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const plotBtn = document.getElementById('plotBtn');
+        const titleInput = document.getElementById('titleInput');
+        const plotDiv = document.getElementById('plot');
+        const dropText = document.getElementById('dropText');
+        const dropHint = document.getElementById('dropHint');
+        const loadExampleBtn = document.getElementById('loadExampleBtn');
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+
+        let csvText = null;
+
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+            dropzone.addEventListener(evt, preventDefaults, false);
+        });
+
+        dropzone.addEventListener('dragover', () => dropzone.classList.add('ring-2', 'ring-blue-300'));
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('ring-2', 'ring-blue-300'));
+        dropzone.addEventListener('drop', handleDrop);
+        dropzone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+        plotBtn.addEventListener('click', doPlot);
+        loadExampleBtn.addEventListener('click', loadExample);
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // Theme: default = dark, can toggle to light. Persist in localStorage.
+        function applyTheme(theme) {
+            // Apply 'light' class to both <html> and <body> so CSS targeting either element works
+            const themeLabelEl = document.getElementById('themeLabel');
+            if (theme === 'light') {
+                // Light theme: show moon icon and label should say 'Light mode'
+                document.documentElement.classList.add('light');
+                document.body.classList.add('light');
+                themeToggle.setAttribute('aria-pressed', 'true');
+                themeToggle.setAttribute('aria-label', 'Switch to dark theme');
+                if (themeLabelEl) themeLabelEl.textContent = 'Light mode';
+                // Moon / crescent (keeps similar look)
+                themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+            } else {
+                // Dark theme (default): show a filled sun so it's obvious on dark background
+                document.documentElement.classList.remove('light');
+                document.body.classList.remove('light');
+                themeToggle.setAttribute('aria-pressed', 'false');
+                themeToggle.setAttribute('aria-label', 'Switch to light theme');
+                if (themeLabelEl) themeLabelEl.textContent = 'Dark mode';
+                // Filled sun: center circle + rays
+                themeIcon.innerHTML = `
+                    <path d="M12 8a4 4 0 100 8 4 4 0 000-8z" fill="currentColor" />
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                `;
+            }
+        }
+
+        function toggleTheme() {
+            const isLight = document.body.classList.contains('light');
+            const newTheme = isLight ? 'dark' : 'light';
+            applyTheme(newTheme);
+            try { localStorage.setItem('cpt_theme', newTheme); } catch (e) { }
+            // If we've already loaded a CSV (and likely rendered a plot), re-render the chart
+            // so the palette and Plotly layout pick up the new theme automatically.
+            // We require `csvText` to be present to rebuild the figure; that's set when
+            // the user uploads a file or loads the example. If it's available, re-run doPlot().
+            try {
+                if (typeof csvText !== 'undefined' && csvText) {
+                    // small debounce to allow CSS changes to paint before Plotly redraw
+                    setTimeout(() => {
+                        doPlot();
+                    }, 50);
+                }
+            } catch (e) {
+                // noop
+            }
+        }
+
+        // Initialize theme
+        (function () {
+            let t = 'dark';
+            try { t = localStorage.getItem('cpt_theme') || 'dark'; } catch (e) { }
+            applyTheme(t);
+        })();
+
+        async function handleDrop(e) {
+            dropzone.classList.remove('ring-2', 'ring-blue-300');
+            const dt = e.dataTransfer;
+            if (!dt) return;
+            const file = dt.files && dt.files[0];
+            if (file) await readFile(file);
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files && e.target.files[0];
+            if (file) readFile(file);
+        }
+
+        async function readFile(file) {
+            try {
+                csvText = await file.text();
+                dropText.textContent = `Loaded: ${file.name}`;
+                dropHint.textContent = '';
+            } catch (err) {
+                dropText.textContent = `Error reading file`;
+                dropHint.textContent = err.message;
+            }
+        }
+
+        async function loadExample() {
+            try {
+                const res = await fetch('public/bad_driver_2024.csv');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                csvText = await res.text();
+                dropText.textContent = `Loaded: bad_driver_2024.csv`;
+                dropHint.textContent = '';
+                // set demo title and auto-plot after loading example
+                titleInput.value = 'Bad Driver 2024';
+                doPlot();
+            } catch (err) {
+                showToast(`Failed to load example: ${err.message}`, 'error', 6000);
+            }
+        }
+
+        function showToast(message, type = 'info', duration = 4000) {
+            const inner = document.getElementById('toastInner');
+            const toast = document.createElement('div');
+            const colorMap = {
+                info: 'bg-blue-50 border-blue-200 text-blue-800',
+                success: 'bg-green-50 border-green-200 text-green-800',
+                error: 'bg-red-50 border-red-200 text-red-800',
+                warn: 'bg-yellow-50 border-yellow-200 text-yellow-800'
+            };
+            const classes = colorMap[type] || colorMap.info;
+            toast.className = `max-w-sm w-full pointer-events-auto rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 overflow-hidden ${classes}`;
+            toast.style.borderWidth = '1px';
+            toast.innerHTML = `
+                    <div class="p-3">
+                        <div class="flex items-start">
+                            <div class="ml-3 w-0 flex-1 text-sm">
+                                <p class="font-medium">${message}</p>
+                            </div>
+                            <div class="ml-4 flex-shrink-0 flex">
+                                <button class="inline-flex text-gray-500 hover:text-gray-700 focus:outline-none" aria-label="Close">&times;</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            inner.appendChild(toast);
+
+            const closeBtn = toast.querySelector('button');
+            const remove = () => { if (toast.parentNode) toast.parentNode.removeChild(toast); };
+            closeBtn.addEventListener('click', remove);
+
+            if (duration > 0) setTimeout(remove, duration);
+        }
+
+        function doPlot() {
+            if (!csvText) {
+                showToast('Please drop or select a CSV file first.', 'error', 5000);
+                return;
+            }
+            const title = titleInput.value || 'Plot Cumulative Scores';
+            const opts = { title, legendPosition: 'right' };
+            const { figure } = processCsvToFigure(csvText, opts);
+            Plotly.newPlot(plotDiv, figure.data, figure.layout, { responsive: true });
+        }
+    </script>
+
+    <!-- Footer -->
+    <footer class="footer-small">
+        <div class="footer-links">
+            <a href="https://github.com/samsledje/pixel-paddle" target="_blank" rel="noopener noreferrer"
+                title="View on GitHub">
+                <svg class="footer-icon" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                        d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                </svg>
+            </a>
+            <!-- <span class="footer-sep">|</span>
+                <a href="./privacy-policy.html" target="_blank" rel="noopener noreferrer" title="Privacy Policy">
+                    <svg class="footer-icon" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11.5C15.4,11.5 16,12.4 16,13V16C16,17.4 15.4,18 14.8,18H9.2C8.6,18 8,17.4 8,16V13C8,12.4 8.6,11.5 9.2,11.5V10C9.2,8.6 10.6,7 12,7M12,8.2C11.2,8.2 10.5,8.7 10.5,10V11.5H13.5V10C13.5,8.7 12.8,8.2 12,8.2Z"/>
+                    </svg>
+                </a> -->
+            <span class="footer-sep">|</span>
+            <a href="https://samsl.io" target="_blank" rel="noopener noreferrer" title="Visit samsl.io">
+                <svg class="footer-icon" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+            </a>
+        </div>
+    </footer>
+</body>
+
+</html>
